@@ -1,0 +1,100 @@
+---
+title: 'Machine Learning Assignment: Exercise Manner Prediction'
+author: "EParc"
+date: "July 11, 2018"
+output:
+  html_document:
+    df_print: kable
+---
+
+# Executive summary
+In this final assignment of the course module on Machine Learning offered by the Johns Hopkins University on coursera. The goal of the assignment is to predict the manner in which the exercise was performed. The data was collected by using devices such as Jawbone Up, Nike FuelBand, and Fitbit. Finally the prediction model was used to  predict 20 different test cases.  
+
+# Tidy data
+The provided raw training and test data is loaded. Whereafter the data is cleaned.
+Both sets are checked on NA values and variance. Only when there are no NA values a variable is accepted.
+Also a variance test is performed. There must be variance in a variable to be accepted.
+
+```{r results='hide', message=FALSE, warning=FALSE}
+library(caret)
+library(rpart)
+library(randomForest)
+library(rattle)
+```
+```{r, eval=T}
+# Loading data
+test_data <- read.csv("~/pml-testing.csv", header = TRUE, sep = ",", na.strings = c("NA", "#DIV/0!", ""))
+train_data <- read.csv("~/pml-training.csv", header = TRUE, sep = ",",  na.strings = c("NA", "#DIV/0!", ""))
+
+# Select Columns with good data (data with variance)
+NZV <- nearZeroVar(train_data)
+train_data <- train_data [, -NZV]
+NZV <- nearZeroVar(test_data)
+test_data <- test_data [, -NZV]
+train_data <- train_data[, -c(1:7)]
+test_data <- test_data[, -c(1:7)]
+
+# Select variables with no NA's
+test_data <- test_data[complete.cases(test_data), ]
+sel_cols <- c(colnames(test_data), "classe")
+train_data <- train_data[,colnames(train_data) %in% sel_cols] 
+
+```
+
+# Exploratory data analysis
+A quick analysis on the probability was performed
+```{r, eval=T}
+# Check the probability of the variable classe 
+prop.table(table(train_data$classe))
+```
+
+# Cross Validation
+For cross validation a partition (70/30) within the training dataset is created 
+```{r, eval=T}
+inTrain  <- createDataPartition(train_data$classe, p=0.7, list=FALSE)
+Train_Set <- train_data[inTrain, ]
+Train_TestSet  <- train_data[-inTrain, ]
+```
+
+# Random Forrest
+A Random Forrest model is trained on the training set
+```{r, eval=T}
+set.seed(98765)
+Forest <- trainControl(method="cv", number=3, verboseIter=FALSE)
+Fitting_model_RF <- train(classe ~ ., data=Train_Set, method="rf", trControl=Forest, na.action=na.roughfix)
+Fitting_model_RF$finalModel
+```
+
+# Model evaluation
+To evaluate the Random Forests model we need to use it for making predictions on the training set and the testing set. See Appendix 1 for the Decision Tree.
+```{r, eval=T}
+predict_RForest <- predict(Fitting_model_RF, newdata=Train_TestSet, na.action = na.pass)
+conf_Mat_RForest <- confusionMatrix(predict_RForest, Train_TestSet$classe)
+conf_Mat_RForest
+```
+The Random Forest model has a very good accuracy on the testing set (Appendix 2). 
+
+# Prediction
+Now we use this Random Forests model to predict the dedicated testing set (only 20 evaluations) for the submission part of the course project:
+```{r, eval=T}
+Final_Prediction <- predict(Fitting_model_RF, newdata=test_data)
+Final_Prediction
+```
+
+# Appendices
+## Appendix 1: Decision Tree
+```{r, eval=T, fig.height=8, fig.width=8}
+Dec_Tree_Mod_Fit <- rpart(classe ~ ., data=Train_Set, method="class")
+fancyRpartPlot(Dec_Tree_Mod_Fit, cex = 0.3)
+```
+
+## Appendix 2: Decision Tree - Accuracy
+```{r, eval=T, fig.height=4, fig.width=4}
+Predict_Dec_Tree <- predict(Dec_Tree_Mod_Fit, newdata=Train_TestSet, type="class")
+conf_Mat_Dec_Tree <- confusionMatrix(Predict_Dec_Tree, Train_TestSet$classe)
+plot(conf_Mat_Dec_Tree$table, col = conf_Mat_Dec_Tree$byClass, main = paste("Decision Tree - Accuracy =", round(conf_Mat_Dec_Tree$overall['Accuracy'], 4)))
+```
+
+# References
+Many thanks to http://web.archive.org/web/20161224072740/http:/groupware.les.inf.puc-rio.br/har for making the dataset available for the Coursera Course. 
+Ugulino, W.; Cardador, D.; Vega, K.; Velloso, E.; Milidiu, R.; Fuks, H. Wearable Computing: Accelerometers' Data Classification of Body Postures and Movements
