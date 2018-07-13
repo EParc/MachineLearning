@@ -1,7 +1,7 @@
 ---
 title: 'Machine Learning Assignment: Exercise Manner Prediction'
 author: "EParc"
-date: "July 11, 2018"
+date: "July 13, 2018"
 output:
   html_document:
     df_print: kable
@@ -65,7 +65,7 @@ Fitting_model_RF <- train(classe ~ ., data=Train_Set, method="rf", trControl=For
 Fitting_model_RF$finalModel
 ```
 
-# Model evaluation
+# Model Evaluation
 To evaluate the Random Forests model we need to use it for making predictions on the training set and the testing set. See Appendix 1 for the Decision Tree.
 ```{r, eval=T}
 predict_RForest <- predict(Fitting_model_RF, newdata=Train_TestSet, na.action = na.pass)
@@ -73,6 +73,12 @@ conf_Mat_RForest <- confusionMatrix(predict_RForest, Train_TestSet$classe)
 conf_Mat_RForest
 ```
 The Random Forest model has a very good accuracy on the testing set (Appendix 2). 
+
+# Out of Sample Error
+The out of sample error was calculated by 1 minus the accuracy
+```{r, eval=T}
+1 - Fitting_model_RF$results[2,2]
+```
 
 # Prediction
 Now we use this Random Forests model to predict the dedicated testing set (only 20 evaluations) for the submission part of the course project:
